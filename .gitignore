@@ -1,0 +1,16 @@
+*.iml
+.idea/
+out/
+
+# Go
+pkg/
+bin/
+
+# *.luac
+luac.out
+
+*.exe
+*.so
+*.log
+*.DS_Store
+.DS_Store
