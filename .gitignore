@@ -2,14 +2,17 @@
 .idea/
 out/
 
+.vscode
+
 # Go
 pkg/
 bin/
 
 # *.luac
 luac.out
-
+luago
 *.exe
+
 *.so
 *.log
 *.DS_Store
