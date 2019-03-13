@@ -1,6 +1,6 @@
 .PHONY: run build clean
 
-all: run
+all: luac_win run
 
 build:
 	go build luago.go
@@ -8,7 +8,7 @@ build:
 run:
 	go run luago.go
 
-luac:
+luac_win:
 	./lua/bin/luac53.exe lua/hello_world.lua
 
 clean:
