@@ -2,19 +2,14 @@ package main
 
 import "fmt"
 import "io/ioutil"
-import "os"
+
 import "luago/binchunk"
 import . "luago/api"
 import "luago/state"
 import . "luago/vm"
 
 func main() {
-	fileName := "luac.out"
-	if len(os.Args) > 1 {
-		fileName = os.Args[1]
-	}
-
-	data, err := ioutil.ReadFile(fileName)
+	data, err := ioutil.ReadFile("luac.out")
 	if err != nil {
 		panic(err)
 	}
