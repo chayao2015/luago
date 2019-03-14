@@ -35,9 +35,15 @@ func (L *luaState) GetRK(rk int) {
 }
 
 func (L *luaState) RegisterCount() int {
+	return int(L.stack.closure.proto.MaxStackSize)
 }
 func (L *luaState) LoadVararg(n int) {
+	if n < 0 {
+		n = len(L.stack.varargs)
+	}
 
+	L.stack.check(n)
+	L.stack.pushN(L.stack.varargs, n)
 }
 
 func (L *luaState) LoadProto(idx int) {
