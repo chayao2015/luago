@@ -44,10 +44,11 @@ type LuaState interface {
 	PushNumber(n float64)
 	PushString(s string)
 
-	// /* Comparison and arithmetic functions */
-	// Arith(op ArithOp)
-	// Compare(idx1, idx2 int, op CompareOp) bool
-	// /* miscellaneous functions */
-	// Len(idx int)
-	// Concat(n int)
+	/* arithmetic functions */
+	Arith(op ArithOp)
+	/* Comparison functions */
+	Compare(idx1, idx2 int, op CompareOp) bool
+	/* miscellaneous functions */
+	Len(idx int)
+	Concat(n int)
 }

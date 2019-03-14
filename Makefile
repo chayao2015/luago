@@ -9,7 +9,7 @@ run:
 	go run luago.go
 
 luac_win:
-	./lua/bin/luac53.exe lua/hello_world.lua
+	./lua/bin/luac53.exe lua/test.lua
 
 clean:
 	rm -rf luac.out

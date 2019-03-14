@@ -4,14 +4,14 @@ package state
 // http://www.lua.org/manual/5.3/manual.html#lua_pushnil
 //将空值压栈
 func (L *luaState) PushNil() {
-
+	L.stack.push(nil)
 }
 
 // [-0, +1, –]
 // http://www.lua.org/manual/5.3/manual.html#lua_pushboolean
 //把 b 作为一个布尔量压栈
 func (L *luaState) PushBoolean(b bool) {
-	L.stack.push(nil)
+	L.stack.push(b)
 }
 
 // [-0, +1, –]
