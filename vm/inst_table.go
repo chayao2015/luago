@@ -79,11 +79,31 @@ func setList(inst Instruction, vm LuaVM) {
 		c = Instruction(vm.Fetch()).Ax()
 	}
 
+	// “当表构造器的最后一个元素是函数调用或者vararg表达式时，Lua会把它们产生的所有值都收集起来”
+	bIsZero := b == 0
+	if bIsZero {
+		b = int(vm.ToInteger(-1)) - a - 1
+		vm.Pop(1)
+	}
+
 	vm.CheckStack(1)
 	idx := int64(c * LFIELDS_PER_FLUSH)
 	for j := 1; j <= b; j++ {
 		idx++
 		vm.PushValue(a + j)
 		vm.SetI(a, idx)
+	}
+
+	//“适当调整操作数B，先按正常逻辑处理寄存器中的值。
+	// 寄存器处理完毕之后，再来处理栈顶值”
+	if bIsZero {
+		for j := vm.RegisterCount() + 1; j <= vm.GetTop(); j++ {
+			idx++
+			vm.PushValue(j)
+			vm.SetI(a, idx)
+		}
+
+		// cleat stack
+		vm.SetTop(vm.RegisterCount())
 	}
 }

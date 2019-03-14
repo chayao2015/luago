@@ -11,6 +11,9 @@ run:
 luac_win:
 	./lua/bin/luac53.exe lua/test.lua
 
+luac_macosx:
+	./lua/bin/luac lua/test.lua
+
 clean:
 	rm -rf luac.out
 	go clean
