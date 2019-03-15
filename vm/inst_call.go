@@ -53,7 +53,7 @@ func vararg(inst Instruction, vm LuaVM) {
 	a, b, _ := inst.ABC()
 	a++
 
-	if b != 1 {// b==0 or b>1
+	if b != 1 { // b==0 or b>1
 		vm.LoadVararg(b - 1)
 		popResults(a, b, vm)
 	}
@@ -62,7 +62,7 @@ func vararg(inst Instruction, vm LuaVM) {
 // return R(A)(R(A+1), ... ,R(A+B-1))
 func tailCall(inst Instruction, vm LuaVM) {
 	a, b, _ := inst.ABC()
-	a += 1
+	a++
 
 	// TODO: optimize tail call!
 	c := 0
@@ -119,7 +119,7 @@ func popResults(a, c int, vm LuaVM) {
 	if c == 1 {
 		// no results
 	} else if c > 1 {
-		for i := a + c -2; i >= a; i-- {
+		for i := a + c - 2; i >= a; i-- {
 			vm.Replace(i)
 		}
 	} else {

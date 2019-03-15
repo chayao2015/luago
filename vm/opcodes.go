@@ -1,6 +1,8 @@
 package vm
 
-import "luago/api"
+import (
+	"luago/api"
+)
 
 /* OpMode */
 /* basic instruction format */
@@ -10,28 +12,6 @@ const (
 	IAsBx        // [     sBx:18     ][ A:8  ][OP:6]
 	IAx          // [           Ax:26        ][OP:6]
 )
-
-// OpArgN类型的操作数不表示任何信息，也就是说不会被使用。比如MOVE指
-// 令（iABC模式）只使用A和B操作数，不使用C操作数（OpArgN类型）。
-// OpArgR类型的操作数在iABC模式下表示寄存器索引，在iAsBx模式下表示跳
-// 转偏移。仍以MOVE指令为例，该指令用于将一个寄存器中的值移动到另一个寄
-// 存器中，其A操作数表示目标寄存器索引，B操作数（OpArgR类型）表示源寄存器
-// 索引。如果用R（N）表示寄存器访问，则MOVE指令可以表示为伪代码R（A）：
-// =R（B）。
-// OpArgK类型的操作数表示常量表索引或者寄存器索引，具体可以分为两种
-// 情况。第一种情况是LOADK指令（iABx模式，用于将常量表中的常量加载到寄存
-// 器中），该指令的Bx操作数表示常量表索引，如果用Kst（N）表示常量表访问，则
-// LOADK指令可以表示为伪代码R（A）：=Kst（Bx）；第二种情况是部分iABC模式指
-// 令，这些指令的B或C操作数既可以表示常量表索引也可以表示寄存器索引，以加
-// 法指令ADD为例，如果用RK（N）表示常量表或者寄存器访问，则该指令可以表示
-// 为伪代码R（A）：=RK（B）+RK（C）。
-// 对于上面的第二种情况，既然操作数既可以表示寄存器索引，也可以表示常
-// 量表索引，那么如何知道其究竟表示的是哪种索引呢？在iABC模式下，B和C操作
-// 数各占9个比特，如果B或C操作数属于OpArgK类型，那么就只能使用9个比特中
-// 的低8位，最高位的那个比特如果是1，则操作数表示常量表索引，否则表示寄存器
-// 索引。
-// 除了上面介绍的这几种情况，操作数也可能表示布尔值、整数值、upvalue索
-// 引、子函数索引等，这些情况都可以归到OpArgU类型里
 
 /* OpArgMask */
 const (
@@ -99,7 +79,7 @@ type opcode struct {
 	argCMode byte // C arg mode
 	opMode   byte // op mode
 	name     string
-	action   func(inst Instruction, vm api.LuaVM)
+	action   func(i Instruction, vm api.LuaVM)
 }
 
 var opcodes = []opcode{
@@ -109,11 +89,11 @@ var opcodes = []opcode{
 	opcode{0, 1, OpArgN, OpArgN, IABx /* */, "LOADKX  ", loadKx},   // R(A) := Kst(extra arg)
 	opcode{0, 1, OpArgU, OpArgU, IABC /* */, "LOADBOOL", loadBool}, // R(A) := (bool)B; if (C) pc++
 	opcode{0, 1, OpArgU, OpArgN, IABC /* */, "LOADNIL ", loadNil},  // R(A), R(A+1), ..., R(A+B) := nil
-	opcode{0, 1, OpArgU, OpArgN, IABC /* */, "GETUPVAL", nil},      // R(A) := UpValue[B]
+	opcode{0, 1, OpArgU, OpArgN, IABC /* */, "GETUPVAL", getUpval}, // R(A) := UpValue[B]
 	opcode{0, 1, OpArgU, OpArgK, IABC /* */, "GETTABUP", getTabUp}, // R(A) := UpValue[B][RK(C)]
 	opcode{0, 1, OpArgR, OpArgK, IABC /* */, "GETTABLE", getTable}, // R(A) := R(B)[RK(C)]
-	opcode{0, 0, OpArgK, OpArgK, IABC /* */, "SETTABUP", nil},      // UpValue[A][RK(B)] := RK(C)
-	opcode{0, 0, OpArgU, OpArgN, IABC /* */, "SETUPVAL", nil},      // UpValue[B] := R(A)
+	opcode{0, 0, OpArgK, OpArgK, IABC /* */, "SETTABUP", setTabUp}, // UpValue[A][RK(B)] := RK(C)
+	opcode{0, 0, OpArgU, OpArgN, IABC /* */, "SETUPVAL", setUpval}, // UpValue[B] := R(A)
 	opcode{0, 0, OpArgK, OpArgK, IABC /* */, "SETTABLE", setTable}, // R(A)[RK(B)] := RK(C)
 	opcode{0, 1, OpArgU, OpArgU, IABC /* */, "NEWTABLE", newTable}, // R(A) := {} (size = B,C)
 	opcode{0, 1, OpArgR, OpArgK, IABC /* */, "SELF    ", self},     // R(A+1) := R(B); R(A) := R(B)[RK(C)]

@@ -9,8 +9,9 @@ type luaStack struct {
 	top   int
 	/* call info*/
 	L       *luaState
-	closure *Closure
+	closure *closure
 	varargs []luaValue
+	openuvs map[int]*upvalue
 	pc      int
 	/* linked list*/
 	prev *luaStack
@@ -22,6 +23,20 @@ func newLuaStack(size int, L *luaState) *luaStack {
 		top:   0,
 		L:     L,
 	}
+}
+
+func (S *luaStack) isValid(idx int) bool {
+	if idx < LUA_REGISTRYINDEX {
+		//索引小于注册表索引，说明是Upvalue伪索引，把它转成真实索引（从0开始）然后看它是否在有效范围之内
+		uvIdx := LUA_REGISTRYINDEX - idx - 1
+		c := S.closure
+		return c != nil && uvIdx < len(c.upvals)
+	}
+	if idx == LUA_REGISTRYINDEX {
+		return true
+	}
+	absIdx := S.absIndex(idx)
+	return absIdx > 0 && absIdx <= S.top
 }
 
 func (S *luaStack) absIndex(idx int) int {
@@ -80,6 +95,15 @@ func (S *luaStack) pushN(vals []luaValue, n int) {
 }
 
 func (S *luaStack) get(idx int) luaValue {
+	if idx < LUA_REGISTRYINDEX {
+		uvIdx := LUA_REGISTRYINDEX - idx - 1
+		c := S.closure
+		if c == nil || uvIdx >= len(c.upvals) {
+			return nil
+		}
+		return *(c.upvals[uvIdx].val)
+	}
+
 	if idx == LUA_REGISTRYINDEX {
 		return S.L.registry
 	}
@@ -92,6 +116,15 @@ func (S *luaStack) get(idx int) luaValue {
 }
 
 func (S *luaStack) set(idx int, val luaValue) {
+	if idx < LUA_REGISTRYINDEX {
+		uvIdx := LUA_REGISTRYINDEX - idx - 1
+		c := S.closure
+		if c != nil || uvIdx < len(c.upvals) {
+			*(c.upvals[uvIdx].val) = val
+		}
+		return
+	}
+
 	if idx == LUA_REGISTRYINDEX {
 		S.L.registry = val.(*luaTable)
 		return
@@ -112,12 +145,4 @@ func (S *luaStack) reverse(from, to int) {
 		from++
 		to--
 	}
-}
-
-func (S *luaStack) isValid(idx int) bool {
-	if idx == LUA_REGISTRYINDEX {
-		return true
-	}
-	absIdx := S.absIndex(idx)
-	return absIdx > 0 && absIdx <= S.top
 }

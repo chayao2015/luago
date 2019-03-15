@@ -6,6 +6,11 @@ type CompareOp = int
 
 type GoFunction func(LuaState) int
 
+//对于任何一个Upvalue索引，用注册表伪索引减去该索引就可以得到对应的Upvalue伪索引
+func LuaUpvalueIndex(i int) int {
+	return LUA_REGISTRYINDEX - i
+}
+
 type LuaState interface {
 	/* basic stack manipulation */
 	GetTop() int
@@ -46,6 +51,7 @@ type LuaState interface {
 	PushNumber(n float64)
 	PushString(s string)
 	PushGoFunction(f GoFunction)
+	PushGoClosure(f GoFunction, n int)
 	PushGlobalTable()
 
 	/* arithmetic functions */

@@ -34,6 +34,13 @@ func (L *luaState) Load(chunk []byte, chunkName, mode string) int {
 	proto := binchunk.Undump(chunk)
 	c := newLuaClosure(proto)
 	L.stack.push(c)
+	// 如果需要，那么第一个Upvalue（对于主函数来说就是_ENV）会被初始化
+	// 成全局环境，其他Upvalue会被初始化成nil
+	if len(proto.Upvalues) > 0 {
+		// 设置 _ENV
+		env := L.registry.get(LUA_RIDX_GLOBALS)
+		c.upvals[0] = &upvalue{&env}
+	}
 	return 0
 }
 
@@ -65,7 +72,7 @@ func (L *luaState) Load(chunk []byte, chunkName, mode string) int {
 // 注意上面这段代码是 平衡 的： 到了最后，堆栈恢复成原有的配置。 这是一种良好的编程习惯
 func (L *luaState) Call(nArgs, nResults int) {
 	val := L.stack.get(-(nArgs + 1))
-	if c, ok := val.(*Closure); ok {
+	if c, ok := val.(*closure); ok {
 		if c.proto != nil {
 			L.callLuaClosure(nArgs, nResults, c)
 		} else {
@@ -80,7 +87,7 @@ func (L *luaState) Call(nArgs, nResults int) {
 // 扔掉即可。参数传递完毕之后，把被调帧推入调用栈，让它成为当前帧，然后直接
 // 执行Go函数。执行完毕之后把被调帧从调用栈里弹出，这样主调帧就又成了当前
 // 帧。最后（如果有必要），还需要把返回值从被调帧里弹出，推入主调帧（多退少补）
-func (L *luaState) callGoClosure(nArgs, nResults int, c *Closure) {
+func (L *luaState) callGoClosure(nArgs, nResults int, c *closure) {
 	// create new lua stack
 	newStack := newLuaStack(nArgs+LUA_MINSTACK, L)
 	newStack.closure = c
@@ -105,7 +112,7 @@ func (L *luaState) callGoClosure(nArgs, nResults int, c *Closure) {
 }
 
 //TODO:
-func (L *luaState) callLuaClosure(nArgs, nResults int, c *Closure) {
+func (L *luaState) callLuaClosure(nArgs, nResults int, c *closure) {
 	nRegs := int(c.proto.MaxStackSize)
 	nParams := int(c.proto.NumParams)
 	isVararg := c.proto.IsVararg == 1
