@@ -1,5 +1,9 @@
 package state
 
+import (
+	. "luago/api"
+)
+
 // [-0, +1, –]
 // http://www.lua.org/manual/5.3/manual.html#lua_pushnil
 //将空值压栈
@@ -35,4 +39,18 @@ func (L *luaState) PushNumber(n float64) {
 //返回内部副本的指针。如果 s 为 NULL，将 nil 压栈并返回 NULL
 func (L *luaState) PushString(s string) {
 	L.stack.push(s)
+}
+
+// [-0, +1, –]
+// http://www.lua.org/manual/5.3/manual.html#lua_pushcfunction
+func (L *luaState) PushGoFunction(f GoFunction) {
+	L.stack.push(newGoClosure(f))
+}
+
+// [-0, +1, –]
+// http://www.lua.org/manual/5.3/manual.html#lua_pushglobaltable
+//将全局环境压栈
+func (L *luaState) PushGlobalTable() {
+	global := L.registry.get(LUA_RIDX_GLOBALS)
+	L.stack.push(global)
 }

@@ -1,7 +1,7 @@
 package state
 
 import (
-	"fmt"
+	. "luago/api"
 	"luago/binchunk"
 	"luago/vm"
 )
@@ -65,22 +65,53 @@ func (L *luaState) Load(chunk []byte, chunkName, mode string) int {
 // 注意上面这段代码是 平衡 的： 到了最后，堆栈恢复成原有的配置。 这是一种良好的编程习惯
 func (L *luaState) Call(nArgs, nResults int) {
 	val := L.stack.get(-(nArgs + 1))
-	if c, ok := val.(*luaClosure); ok {
-		fmt.Printf("call %s<%d,%d>\n", c.proto.Source,
-			c.proto.LineDefined, c.proto.LastLineDefined)
-		L.callLuaClosure(nArgs, nResults, c)
+	if c, ok := val.(*Closure); ok {
+		if c.proto != nil {
+			L.callLuaClosure(nArgs, nResults, c)
+		} else {
+			L.callGoClosure(nArgs, nResults, c)
+		}
 	} else {
-		panic("not luaClosure!")
+		panic("not Closure!")
 	}
 }
 
-func (L *luaState) callLuaClosure(nArgs, nResults int, c *luaClosure) {
+// 先创建新的调用帧，然后把参数值从主调帧里弹出，推入被调帧。Go闭包直接从主调帧里弹出
+// 扔掉即可。参数传递完毕之后，把被调帧推入调用栈，让它成为当前帧，然后直接
+// 执行Go函数。执行完毕之后把被调帧从调用栈里弹出，这样主调帧就又成了当前
+// 帧。最后（如果有必要），还需要把返回值从被调帧里弹出，推入主调帧（多退少补）
+func (L *luaState) callGoClosure(nArgs, nResults int, c *Closure) {
+	// create new lua stack
+	newStack := newLuaStack(nArgs+LUA_MINSTACK, L)
+	newStack.closure = c
+
+	// pass args, po func
+	if nArgs > 0 {
+		args := L.stack.popN(nArgs)
+		newStack.pushN(args, nArgs)
+	}
+	L.stack.pop()
+
+	// run closure
+	L.pushLuaStack(newStack)
+	n := c.goFunc(L)
+	L.popLuaStack()
+
+	// return results
+	if nResults != 0 {
+		results := newStack.popN(n)
+		L.stack.pushN(results, nResults)
+	}
+}
+
+//TODO:
+func (L *luaState) callLuaClosure(nArgs, nResults int, c *Closure) {
 	nRegs := int(c.proto.MaxStackSize)
 	nParams := int(c.proto.NumParams)
 	isVararg := c.proto.IsVararg == 1
 
 	// create new lua stack
-	newStack := newLuaStack(nRegs + 20)
+	newStack := newLuaStack(nRegs+LUA_MINSTACK, L)
 	newStack.closure = c
 
 	// pass args, po func

@@ -1,13 +1,20 @@
 package state
 
+import (
+	. "luago/api"
+)
+
 type luaState struct {
-	stack *luaStack
+	registry *luaTable //register table
+	stack    *luaStack // lua stack
 }
 
 func New() *luaState {
-	return &luaState{
-		stack: newLuaStack(20),
-	}
+	registry := newLuaTable(0, 0)
+	registry.put(LUA_RIDX_GLOBALS, newLuaTable(0, 0))
+	L := &luaState{registry: registry}
+	L.pushLuaStack(newLuaStack(LUA_MINSTACK, L))
+	return L
 }
 
 func (L *luaState) pushLuaStack(stack *luaStack) {

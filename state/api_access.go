@@ -174,3 +174,23 @@ func (L *luaState) ToStringX(idx int) (string, bool) {
 		return "", false
 	}
 }
+
+// [-0, +0, –]
+// http://www.lua.org/manual/5.3/manual.html#lua_iscfunction
+func (L *luaState) IsGoFunction(idx int) bool {
+	val := L.stack.get(idx)
+	if c, ok := val.(*Closure); ok {
+		return c.goFunc != nil
+	}
+	return false
+}
+
+// [-0, +0, –]
+// http://www.lua.org/manual/5.3/manual.html#lua_tocfunction
+func (L *luaState) ToGoFunction(idx int) GoFunction {
+	val := L.stack.get(idx)
+	if c, ok := val.(*Closure); ok {
+		return c.goFunc
+	}
+	return nil
+}

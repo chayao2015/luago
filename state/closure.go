@@ -1,13 +1,19 @@
 package state
 
 import (
+	. "luago/api"
 	"luago/binchunk"
 )
 
-type luaClosure struct {
-	proto *binchunk.Prototype
+type Closure struct {
+	proto  *binchunk.Prototype
+	goFunc GoFunction
 }
 
-func newLuaClosure(proto *binchunk.Prototype) *luaClosure {
-	return &luaClosure{proto: proto}
+func newLuaClosure(proto *binchunk.Prototype) *Closure {
+	return &Closure{proto: proto}
+}
+
+func newGoClosure(f GoFunction) *Closure {
+	return &Closure{goFunc: f}
 }

@@ -12,6 +12,7 @@ bin/
 luac.out
 luago
 *.exe
+debug
 
 *.so
 *.log

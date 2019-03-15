@@ -54,6 +54,14 @@ func (L *luaState) GetI(idx int, i int64) LuaType {
 	return L.getTable(t, i)
 }
 
+// [-0, +1, e]
+// http://www.lua.org/manual/5.3/manual.html#lua_getglobal
+//把全局变量 name 里的值压栈，返回该值的类型
+func (L *luaState) GetGlobal(name string) LuaType {
+	t := L.registry.get(LUA_RIDX_GLOBALS)
+	return L.getTable(t, name)
+}
+
 func (L *luaState) getTable(t, k luaValue) LuaType {
 	if tbl, ok := t.(*luaTable); ok {
 		v := tbl.get(k)
