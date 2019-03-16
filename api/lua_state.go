@@ -6,7 +6,6 @@ type CompareOp = int
 
 type GoFunction func(LuaState) int
 
-//对于任何一个Upvalue索引，用注册表伪索引减去该索引就可以得到对应的Upvalue伪索引
 func LuaUpvalueIndex(i int) int {
 	return LUA_REGISTRYINDEX - i
 }
@@ -37,6 +36,7 @@ type LuaState interface {
 	IsTable(idx int) bool
 	IsThread(idx int) bool
 	IsFunction(idx int) bool
+	IsGoFunction(idx int) bool
 	ToBoolean(idx int) bool
 	ToInteger(idx int) int64
 	ToIntegerX(idx int) (int64, bool)
@@ -44,6 +44,8 @@ type LuaState interface {
 	ToNumberX(idx int) (float64, bool)
 	ToString(idx int) string
 	ToStringX(idx int) (string, bool)
+	ToGoFunction(idx int) GoFunction
+	RawLen(idx int) uint
 	/* push functions (Go -> stack) */
 	PushNil()
 	PushBoolean(b bool)
@@ -53,31 +55,33 @@ type LuaState interface {
 	PushGoFunction(f GoFunction)
 	PushGoClosure(f GoFunction, n int)
 	PushGlobalTable()
-
-	/* arithmetic functions */
+	/* Comparison and arithmetic functions */
 	Arith(op ArithOp)
-	/* Comparison functions */
 	Compare(idx1, idx2 int, op CompareOp) bool
-	/* miscellaneous functions */
-	Len(idx int)
-	Concat(n int)
-
+	RawEqual(idx1, idx2 int) bool
 	/* get functions (Lua -> stack) */
 	NewTable()
 	CreateTable(nArr, nRec int)
 	GetTable(idx int) LuaType
 	GetField(idx int, k string) LuaType
 	GetI(idx int, i int64) LuaType
+	RawGet(idx int) LuaType
+	RawGetI(idx int, i int64) LuaType
+	GetMetatable(idx int) bool
 	GetGlobal(name string) LuaType
-
 	/* set functions (stack -> Lua) */
 	SetTable(idx int)
 	SetField(idx int, k string)
 	SetI(idx int, i int64)
+	RawSet(idx int)
+	RawSetI(idx int, i int64)
+	SetMetatable(idx int)
 	SetGlobal(name string)
 	Register(name string, f GoFunction)
-
 	/* 'load' and 'call' functions (load and run Lua code) */
 	Load(chunk []byte, chunkName, mode string) int
 	Call(nArgs, nResults int)
+	/* miscellaneous functions */
+	Len(idx int)
+	Concat(n int)
 }

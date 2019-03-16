@@ -24,17 +24,30 @@ func (L *luaState) Compare(idx1, idx2 int, op CompareOp) bool {
 	b := L.stack.get(idx2)
 	switch op {
 	case LUA_OPEQ:
-		return eq(a, b)
+		return eq(a, b, L)
 	case LUA_OPLT:
-		return lt(a, b)
+		return lt(a, b, L)
 	case LUA_OPLE:
-		return le(a, b)
+		return le(a, b, L)
 	default:
 		panic("invalid compare op!")
 	}
 }
 
-func eq(a, b luaValue) bool {
+// [-0, +0, –]
+// http://www.lua.org/manual/5.3/manual.html#lua_rawequal
+//如果索引 index1 与索引 index2 处的值 本身相等（即不调用元方法），返回 1 。 否则返回 0 。 当任何一个索引无效时，也返回 0
+func (L *luaState) RawEqual(idx1, idx2 int) bool {
+	if !L.stack.isValid(idx1) || !L.stack.isValid(idx2) {
+		return false
+	}
+
+	a := L.stack.get(idx1)
+	b := L.stack.get(idx2)
+	return eq(a, b, nil)
+}
+
+func eq(a, b luaValue, L *luaState) bool {
 	switch x := a.(type) {
 	case nil:
 		return b == nil
@@ -62,12 +75,19 @@ func eq(a, b luaValue) bool {
 		default:
 			return false
 		}
+	case *luaTable:
+		if y, ok := b.(*luaTable); ok && x != y && L != nil {
+			if res, ok := callMetamethod(x, y, "__eq", L); ok {
+				return convertToBoolean(res)
+			}
+		}
+		return a == b
 	default:
 		return a == b
 	}
 }
 
-func lt(a, b luaValue) bool {
+func lt(a, b luaValue, L *luaState) bool {
 	switch x := a.(type) {
 	case string:
 		if y, ok := b.(string); ok {
@@ -88,10 +108,14 @@ func lt(a, b luaValue) bool {
 			return x < float64(y)
 		}
 	}
+
+	if res, ok := callMetamethod(a, b, "__lt", L); ok {
+		return convertToBoolean(res)
+	}
 	panic("comparison error!")
 }
 
-func le(a, b luaValue) bool {
+func le(a, b luaValue, L *luaState) bool {
 	switch x := a.(type) {
 	case string:
 		if y, ok := b.(string); ok {
@@ -111,6 +135,11 @@ func le(a, b luaValue) bool {
 		case int64:
 			return x <= float64(y)
 		}
+	}
+	if res, ok := callMetamethod(a, b, "__le", L); ok {
+		return convertToBoolean(res)
+	} else if res, ok := callMetamethod(b, a, "__lt", L); ok {
+		return !convertToBoolean(res)
 	}
 	panic("comparison error!")
 }

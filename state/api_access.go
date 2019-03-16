@@ -194,3 +194,20 @@ func (L *luaState) ToGoFunction(idx int) GoFunction {
 	}
 	return nil
 }
+
+// [-0, +0, –]
+// http://www.lua.org/manual/5.3/manual.html#lua_rawlen
+// 返回给定索引处值的固有“长度”： 对于字符串，它指字符串的长度；
+// 对于表；它指不触发元方法的情况下取长度操作（'#'）应得到的值；
+// 对于用户数据，它指为该用户数据分配的内存块的大小； 对于其它值，它为 0
+func (L *luaState) RawLen(idx int) uint {
+	val := L.stack.get(idx)
+	switch x := val.(type) {
+	case string:
+		return uint(len(x))
+	case *luaTable:
+		return uint(x.len())
+	default:
+		return 0
+	}
+}

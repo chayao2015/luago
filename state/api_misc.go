@@ -9,6 +9,8 @@ func (L *luaState) Len(idx int) {
 	val := L.stack.get(idx)
 	if s, ok := val.(string); ok {
 		L.stack.push(int64(len(s)))
+	} else if res, ok := callMetamethod(val, val, "__len", L); ok {
+		L.stack.push(res)
 	} else if t, ok := val.(*luaTable); ok {
 		L.stack.push(int64(t.len()))
 	} else {
@@ -35,7 +37,13 @@ func (L *luaState) Concat(n int) {
 				L.stack.push(s1 + s2)
 				continue
 			}
-
+			// 如果 不是 字符串 尝试进行 元方法
+			a := L.stack.pop()
+			b := L.stack.pop()
+			if res, ok := callMetamethod(a, b, "__concat", L); ok {
+				L.stack.push(res)
+				continue
+			}
 			panic("concatenation error!")
 		}
 	}

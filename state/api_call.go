@@ -72,7 +72,19 @@ func (L *luaState) Load(chunk []byte, chunkName, mode string) int {
 // 注意上面这段代码是 平衡 的： 到了最后，堆栈恢复成原有的配置。 这是一种良好的编程习惯
 func (L *luaState) Call(nArgs, nResults int) {
 	val := L.stack.get(-(nArgs + 1))
-	if c, ok := val.(*closure); ok {
+	c, ok := val.(*closure)
+	if !ok {
+		//查找是否有 元方法 TODO:??
+		if mf := getMetafield(val, "__call", L); mf != nil {
+			if c, ok = mf.(*closure); ok {
+				L.stack.push(val)
+				L.Insert(-(nArgs + 2))
+				nArgs++
+			}
+		}
+	}
+
+	if ok {
 		if c.proto != nil {
 			L.callLuaClosure(nArgs, nResults, c)
 		} else {

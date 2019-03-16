@@ -31,7 +31,7 @@ func (L *luaState) CreateTable(nArr, nRec int) {
 func (L *luaState) GetTable(idx int) LuaType {
 	t := L.stack.get(idx)
 	k := L.stack.pop()
-	return L.getTable(t, k)
+	return L.getTable(t, k, false)
 }
 
 // [-0, +1, e]
@@ -41,7 +41,7 @@ func (L *luaState) GetTable(idx int) LuaType {
 // 函数将返回压入值的类型
 func (L *luaState) GetField(idx int, k string) LuaType {
 	t := L.stack.get(idx)
-	return L.getTable(t, k)
+	return L.getTable(t, k, false)
 }
 
 // [-0, +1, e]
@@ -51,7 +51,7 @@ func (L *luaState) GetField(idx int, k string) LuaType {
 // 返回压入值的类型
 func (L *luaState) GetI(idx int, i int64) LuaType {
 	t := L.stack.get(idx)
-	return L.getTable(t, i)
+	return L.getTable(t, i, false)
 }
 
 // [-0, +1, e]
@@ -59,14 +59,65 @@ func (L *luaState) GetI(idx int, i int64) LuaType {
 //把全局变量 name 里的值压栈，返回该值的类型
 func (L *luaState) GetGlobal(name string) LuaType {
 	t := L.registry.get(LUA_RIDX_GLOBALS)
-	return L.getTable(t, name)
+	return L.getTable(t, name, false)
 }
 
-func (L *luaState) getTable(t, k luaValue) LuaType {
+// [-1, +1, –]
+// http://www.lua.org/manual/5.3/manual.html#lua_rawget
+//类似于 lua_gettable ， 但是作一次直接访问（不触发元方法）
+func (L *luaState) RawGet(idx int) LuaType {
+	t := L.stack.get(idx)
+	k := L.stack.pop()
+	return L.getTable(t, k, true)
+}
+
+// [-0, +1, –]
+// http://www.lua.org/manual/5.3/manual.html#lua_rawgeti
+// 把 t[n] 的值压栈， 这里的 t 是指给定索引处的表。 这是一次直接访问；就是说，它不会触发元方法。返回入栈值的类型
+func (L *luaState) RawGetI(idx int, i int64) LuaType {
+	t := L.stack.get(idx)
+	return L.getTable(t, i, true)
+}
+
+// [-0, +(0|1), –]
+// http://www.lua.org/manual/5.3/manual.html#lua_getmetatable
+// int lua_getmetatable (lua_State *L, int index);
+// 如果该索引处的值有元表，则将其元表压栈，返回 1 。 否则不会将任何东西入栈，返回 0
+func (L *luaState) GetMetatable(idx int) bool {
+	val := L.stack.get(idx)
+
+	if mt := getMetatable(val, L); mt != nil {
+		L.stack.push(mt)
+		return true
+	}
+	return false
+}
+
+//
+// raw true，表示需要忽略元方法
+func (L *luaState) getTable(t, k luaValue, raw bool) LuaType {
 	if tbl, ok := t.(*luaTable); ok {
 		v := tbl.get(k)
-		L.stack.push(v)
-		return typeOf(v)
+		if raw || v != nil || !tbl.hasMetafield("__index") {
+			L.stack.push(v)
+			return typeOf(v)
+		}
+	}
+
+	if !raw {
+		if mf := getMetafield(t, "__index", L); mf != nil {
+			switch x := mf.(type) {
+			case *luaTable:
+				return L.getTable(x, k, false)
+			case *closure:
+				L.stack.push(mf)
+				L.stack.push(t)
+				L.stack.push(k)
+				L.Call(2, 1)
+				v := L.stack.get(-1)
+				return typeOf(v)
+			}
+		}
 	}
 	panic("not a table!")
 }

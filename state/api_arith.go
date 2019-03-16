@@ -7,6 +7,7 @@ import (
 )
 
 type operator struct {
+	metamethod  string //元方法
 	integerFunc func(int64, int64) int64
 	floatFunc   func(float64, float64) float64
 }
@@ -35,20 +36,20 @@ var (
 )
 
 var operators = []operator{
-	operator{iadd, fadd},
-	operator{isub, fsub},
-	operator{imul, fmul},
-	operator{imod, fmod},
-	operator{nil, pow},
-	operator{nil, div},
-	operator{iidiv, fidiv},
-	operator{band, nil},
-	operator{bor, nil},
-	operator{bxor, nil},
-	operator{shl, nil},
-	operator{shr, nil},
-	operator{iunm, funm},
-	operator{bnot, nil},
+	operator{"__add", iadd, fadd},
+	operator{"__sub", isub, fsub},
+	operator{"__mul", imul, fmul},
+	operator{"__mod", imod, fmod},
+	operator{"__pow", nil, pow},
+	operator{"__div", nil, div},
+	operator{"__idiv", iidiv, fidiv},
+	operator{"__band", band, nil},
+	operator{"__bor", bor, nil},
+	operator{"__bxor", bxor, nil},
+	operator{"__shl", shl, nil},
+	operator{"__shr", shr, nil},
+	operator{"__unm", iunm, funm},
+	operator{"__bnot", bnot, nil},
 }
 
 // [-(2|1), +1, e]
@@ -86,9 +87,16 @@ func (L *luaState) Arith(op ArithOp) {
 	operator := operators[op]
 	if res := arith(a, b, operator); res != nil {
 		L.stack.push(res)
-	} else {
-		panic("arithmetic error!")
+		return
 	}
+
+	mm := operator.metamethod
+	if res, ok := callMetamethod(a, b, mm, L); ok {
+		L.stack.push(res)
+		return
+	}
+
+	panic("arithmetic error!")
 }
 
 func arith(a, b luaValue, op operator) luaValue {

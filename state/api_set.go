@@ -13,7 +13,7 @@ func (L *luaState) SetTable(idx int) {
 	t := L.stack.get(idx)
 	v := L.stack.pop()
 	k := L.stack.pop()
-	L.setTable(t, k, v)
+	L.setTable(t, k, v, false)
 }
 
 // [-1, +0, e]
@@ -24,7 +24,7 @@ func (L *luaState) SetTable(idx int) {
 func (L *luaState) SetField(idx int, k string) {
 	t := L.stack.get(idx)
 	v := L.stack.pop()
-	L.setTable(t, k, v)
+	L.setTable(t, k, v, false)
 }
 
 // [-1, +0, e]
@@ -35,7 +35,7 @@ func (L *luaState) SetField(idx int, k string) {
 func (L *luaState) SetI(idx int, i int64) {
 	t := L.stack.get(idx)
 	v := L.stack.pop()
-	L.setTable(t, i, v)
+	L.setTable(t, i, v, false)
 }
 
 // [-1, +0, e]
@@ -44,7 +44,27 @@ func (L *luaState) SetI(idx int, i int64) {
 func (L *luaState) SetGlobal(name string) {
 	t := L.registry.get(LUA_RIDX_GLOBALS)
 	v := L.stack.pop()
-	L.setTable(t, name, v)
+	L.setTable(t, name, v, false)
+}
+
+// [-2, +0, m]
+// http://www.lua.org/manual/5.3/manual.html#lua_rawset
+//类似于 lua_settable ， 但是是做一次直接赋值（不触发元方法）
+func (L *luaState) RawSet(idx int) {
+	t := L.stack.get(idx)
+	v := L.stack.pop()
+	k := L.stack.pop()
+	L.setTable(t, k, v, true)
+}
+
+// [-1, +0, m]
+// http://www.lua.org/manual/5.3/manual.html#lua_rawseti
+// 等价于 t[i] = v ， 这里的 t 是指给定索引处的表， 而 v 是栈顶的值。
+// 这个函数会将值弹出栈。 赋值是直接的；即不会触发元方法。
+func (L *luaState) RawSetI(idx int, i int64) {
+	t := L.stack.get(idx)
+	v := L.stack.pop()
+	L.setTable(t, i, v, true)
 }
 
 // [-0, +0, e]
@@ -55,10 +75,46 @@ func (L *luaState) Register(name string, f GoFunction) {
 	L.SetGlobal(name)
 }
 
-func (L *luaState) setTable(t, k, v luaValue) {
-	if tbl, ok := t.(*luaTable); ok {
-		tbl.put(k, v)
-		return
+// [-1, +0, –]
+// http://www.lua.org/manual/5.3/manual.html#lua_setmetatable
+//把一张表弹出栈，并将其设为给定索引处的值的元表
+func (L *luaState) SetMetatable(idx int) {
+	val := L.stack.get(idx)
+	mtVal := L.stack.pop()
+	if mtVal == nil {
+		setMetatable(val, nil, L)
+	} else if mt, ok := mtVal.(*luaTable); ok {
+		setMetatable(val, mt, L)
+	} else {
+		panic("table expected!") // todo
 	}
+}
+
+// t[k]=v
+func (L *luaState) setTable(t, k, v luaValue, raw bool) {
+	if tbl, ok := t.(*luaTable); ok {
+		if raw || tbl.get(k) != nil || !tbl.hasMetafield("__newindex") {
+			tbl.put(k, v)
+			return
+		}
+	}
+
+	if !raw {
+		if mf := getMetafield(t, "__newindex", L); mf != nil {
+			switch x := mf.(type) {
+			case *luaTable:
+				L.setTable(x, k, v, false)
+				return
+			case *closure:
+				L.stack.push(mf)
+				L.stack.push(t)
+				L.stack.push(k)
+				L.stack.push(v)
+				L.Call(3, 0)
+				return
+			}
+		}
+	}
+
 	panic("not a table!")
 }
