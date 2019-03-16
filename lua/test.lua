@@ -1,14 +1,19 @@
-function div0(a, b)
-  if b == 0 then
-    error("DIV BY ZERO !")
-  else
-    return a / b
-  end
-end
+print("hello") -- short comment
+print("world") --> another short comment
+print() --[[ long comment ]]
+--[===[
+  another
+  long comment
+]===]
 
-function div1(a, b) return div0(a, b) end
-function div2(a, b) return div1(a, b) end
+print("hello, \z
+       world!") --> hello, world!
 
-ok, result = pcall(div2, 4, 2); print(ok, result)
-ok, err = pcall(div2, 5, 0);    print(ok, err)
-ok, err = pcall(div2, {}, {});  print(ok, err)
+a = 'alo\n123"'
+a = "alo\n123\""
+a = '\97lo\10\04923"'
+a = [[alo
+123"]]
+a = [==[
+alo
+123"]==]
