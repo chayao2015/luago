@@ -66,3 +66,11 @@ func (L *luaState) Next(idx int) bool {
 	}
 	panic("table expected!")
 }
+
+// [-1, +0, v]
+// http://www.lua.org/manual/5.3/manual.html#lua_error
+// 以栈顶的值作为错误对象，抛出一个 Lua 错误。 这个函数将做一次长跳转，所以一定不会返回
+func (L *luaState) Error() int {
+	err := L.stack.pop()
+	panic(err)
+}

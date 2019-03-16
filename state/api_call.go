@@ -113,12 +113,12 @@ func (L *luaState) callGoClosure(nArgs, nResults int, c *closure) {
 
 	// run closure
 	L.pushLuaStack(newStack)
-	n := c.goFunc(L)
+	r := c.goFunc(L)
 	L.popLuaStack()
 
 	// return results
 	if nResults != 0 {
-		results := newStack.popN(n)
+		results := newStack.popN(r)
 		L.stack.pushN(results, nResults)
 	}
 }
@@ -163,4 +163,47 @@ func (L *luaState) runLuaClosure() {
 			break
 		}
 	}
+}
+
+// Calls a function in protected mode.
+// http://www.lua.org/manual/5.3/manual.html#lua_pcall
+// 以保护模式调用一个函数。
+// nargs 和 nresults 的含义与 lua_call 中的相同。 如果在调用过程中没有发生错误， lua_pcall 的行为和 lua_call 完全一致。
+// 但是，如果有错误发生的话， lua_pcall 会捕获它， 然后把唯一的值（错误消息）压栈，然后返回错误码。 同 lua_call 一样， lua_pcall 总是把函数本身和它的参数从栈上移除。
+
+// 如果 msgh 是 0 ， 返回在栈顶的错误消息就和原始错误消息完全一致。 否则， msgh 就被当成是 错误处理函数 在栈上的索引位置。
+// （在当前的实现里，这个索引不能是伪索引。） 在发生运行时错误时， 这个函数会被调用而参数就是错误消息。 错误处理函数的返回值将被 lua_pcall 作为错误消息返回在堆栈上。
+
+// 典型的用法中，错误处理函数被用来给错误消息加上更多的调试信息， 比如栈跟踪信息。 这些信息在 lua_pcall 返回后， 由于栈已经展开，所以收集不到了。
+
+// lua_pcall 函数会返回下列常数 （定义在 lua.h 内）中的一个：
+
+// LUA_OK (0): 成功。
+// LUA_ERRRUN: 运行时错误。
+// LUA_ERRMEM: 内存分配错误。对于这种错，Lua 不会调用错误处理函数。
+// LUA_ERRERR: 在运行错误处理函数时发生的错误。
+// LUA_ERRGCMM: 在运行 __gc 元方法时发生的错误。 （这个错误和被调用的函数无关。）
+func (L *luaState) PCall(nArgs, nResults, msgh int) (status int) {
+	caller := L.stack
+	status = LUA_ERRRUN
+
+	//catch error
+	// 使用Go语言内置的panic（）函数抛出错误，那么自然就需要使用 defer-recover机制来捕获异常
+	// 调用Go语言内置的recover（）函数从错误中恢复，然后从调用栈顶依次弹
+	// 出调用帧，直到到达发起调用的调用帧为止，然后把错误对象推入栈顶，返回 LUA_ERRRUN
+	defer func() {
+		if err := recover(); err != nil {
+			if msgh != 0 {
+				panic(err)
+			}
+			for L.stack != caller {
+				L.popLuaStack()
+			}
+			L.stack.push(err)
+		}
+	}()
+
+	L.Call(nArgs, nResults)
+	status = LUA_OK
+	return
 }

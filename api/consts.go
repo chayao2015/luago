@@ -43,3 +43,16 @@ const (
 	LUA_OPLT        // <
 	LUA_OPLE        // <=
 )
+
+/* thread status */
+// 表示函数加载或者执行的状态，其中LUA_OK和LUA_ERRRUN会在PCall（）方法里用到
+const (
+	LUA_OK = iota
+	LUA_YIELD
+	LUA_ERRRUN
+	LUA_ERRSYNTAX
+	LUA_ERRMEM
+	LUA_ERRGCMM
+	LUA_ERRERR
+	LUA_ERRFILE
+)
