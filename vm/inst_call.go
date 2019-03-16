@@ -90,6 +90,18 @@ func fReturn(inst Instruction, vm LuaVM) {
 	}
 }
 
+//TODO:??/
+//TFORCALL指令（iABC模式
+// R(A+3), ... ,R(A+2+C) := R(A)(R(A+1), R(A+2));
+func tForCall(inst Instruction, vm LuaVM) {
+	a, _, c := inst.ABC()
+	a++
+
+	pushFuncAndArgs(a, 3, vm)
+	vm.Call(2, c)
+	popResults(a+3, c+1, vm)
+}
+
 func pushFuncAndArgs(a, b int, vm LuaVM) (nArgs int) {
 	if b >= 1 {
 		vm.CheckStack(b)

@@ -48,3 +48,21 @@ func (L *luaState) Concat(n int) {
 		}
 	}
 }
+
+// [-1, +(2|0), e]
+// http://www.lua.org/manual/5.3/manual.html#lua_next
+// 从栈顶弹出一个键， 然后把索引指定的表中的一个键值对压栈 （弹出的键之后的 “下一” 对）。
+// 如果表中以无更多元素， 那么 lua_next 将返回 0 （什么也不压栈）。
+func (L *luaState) Next(idx int) bool {
+	val := L.stack.get(idx)
+	if t, ok := val.(*luaTable); ok {
+		key := L.stack.pop()
+		if nextKey := t.nextKey(key); nextKey != nil {
+			L.stack.push(nextKey)
+			L.stack.push(t.get(nextKey))
+			return true
+		}
+		return false
+	}
+	panic("table expected!")
+}

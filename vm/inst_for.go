@@ -72,3 +72,17 @@ func forLoop(inst Instruction, vm LuaVM) {
 		vm.Copy(a, a+3)
 	}
 }
+
+//TFORLOOP指令（iAsBx模式）
+// if R(A+1) ~= nil then {
+//   R(A)=R(A+1); pc += sBx
+// }
+func tForLoop(inst Instruction, vm LuaVM) {
+	a, sBx := inst.AsBx()
+	a++
+
+	if !vm.IsNil(a + 1) {
+		vm.Copy(a+1, a)
+		vm.AddPC(sBx)
+	}
+}
